@@ -1,0 +1,28 @@
+using Serilog;
+using Zyrenn.LinuxAgent;
+using Zyrenn.LinuxAgent.Services.Common;
+using Zyrenn.LinuxAgent.Services.Containers;
+using Zyrenn.LinuxAgent.Services.Databases;
+using Zyrenn.LinuxAgent.Services.Hosts;
+using Zyrenn.LinuxAgent.Workers;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
+
+var builder = Host.CreateApplicationBuilder(args);
+
+builder.Services.AddHostedService<PeriodicDataProcessor>();
+builder.Services.AddSingleton<IHostMetricService, HostMetricService>();
+builder.Services.AddSingleton<IContainerService, ContainerService>();
+builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
+
+#region Logger configuration
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    //.WriteTo.File("zagent-logs.txt", rollingInterval: RollingInterval.Day)
+    .WriteTo.Console()
+    .CreateLogger();
+
+#endregion
+
+var host = builder.Build();
+host.Run();
