@@ -48,6 +48,7 @@ public class PeriodicDataProcessor(
                         memoryMetric: hostMetricService.GetMemoryUsage(),
                         diskMetric: hostMetricService.GetDiskMetrics(),
                         networkMetric: hostMetricService.GetNetworkUsage());
+                    Console.WriteLine(JsonSerializer.Serialize(hostMetric));
                     //Console.WriteLine(JsonSerializer.Serialize(hostMetric));
                     //await _dataPublisher.PublishAsync("host_metric", hostMetric, stoppingToken);
 
