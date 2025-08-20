@@ -25,8 +25,8 @@ public class PeriodicDataProcessor(
 {
     #region Fields region
 
-    //private readonly DataPublisher _dataPublisher = new();
-    private readonly PeriodicTimer _timeToDelayJob = new (period: TimeSpan.FromSeconds(6));
+    private readonly DataPublisher _dataPublisher = new();
+    private readonly PeriodicTimer _timeToDelayJob = new(period: TimeSpan.FromSeconds(6));
 
     #endregion
 
@@ -34,33 +34,37 @@ public class PeriodicDataProcessor(
 
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        var hostName = configuration.GetSection("Host:Name").Value ?? "unknown";
+        var hostTag = configuration.GetSection("Host:Tag").Value ?? "unknown";
+        var hostIps = configuration.GetSection("Host:Ips").Get<string[]>() ?? Array.Empty<string>();
+
         return Task.Run(async () =>
         {
             Log.Information("Host agent's data processor is running. About to process data.");
             while (!stoppingToken.IsCancellationRequested)
-            { 
+            {
                 try
-                {     
-                    //-----Host Metrics
+                {
                     var hostMetric = new HostMetric(
-                        configuration,
+                        name: hostName,
+                        tag: hostTag,
+                        ips: hostIps,
                         cpuMetric: await hostMetricService.GetCpuUsageAsync().ConfigureAwait(false),
                         memoryMetric: hostMetricService.GetMemoryUsage(),
                         diskMetric: hostMetricService.GetDiskMetrics(),
                         networkMetric: hostMetricService.GetNetworkUsage());
                     Console.WriteLine(JsonSerializer.Serialize(hostMetric));
-                    //Console.WriteLine(JsonSerializer.Serialize(hostMetric));
-                    //await _dataPublisher.PublishAsync("host_metric", hostMetric, stoppingToken);
+                    await _dataPublisher.PublishAsync("host_metric", hostMetric, stoppingToken);
 
                     //-----Container Data
-                    var containers = await containerService.GetContainerListAsync(stoppingToken).ConfigureAwait(false);
+                    //var containers = await containerService.GetContainerListAsync(stoppingToken).ConfigureAwait(false);
                     //Console.WriteLine(JsonSerializer.Serialize(containers));
-                    //await _dataPublisher.PublishAsync("container_metric",
+                    //await _dataPublisher.PublishAsync("host_metric",
                     //    containers, stoppingToken);
 
                     //-----Db data
-                        //await _dataPublisher.PublishAsync("db_metric",
-                        //    await databaseService.GetDatabaseListAsync(stoppingToken), stoppingToken);
+                    //  await _dataPublisher.PublishAsync("db_metric",
+                    //      await databaseService.GetDatabaseListAsync(stoppingToken), stoppingToken);
 
                     if (!stoppingToken.IsCancellationRequested)
                     {
