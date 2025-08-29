@@ -37,3 +37,46 @@ The agent runs on Linux systems and collects system metrics, and observability s
   }
 }
 ```
+
+## Example Payload for Databases
+```json
+{
+  "Timestamp": "2025-08-29T21:59:32.2388116Z",
+  "Databases": [
+    {
+      "Name": "zyrenn",
+      "Ip": "127.0.0.1/32",
+      "Size": 8073699,
+      "IndexCount": 3,
+      "FunctionCount": 5,
+      "TriggerCount": 0,
+      "ViewCount": 2,
+      "MaterializedViewCount": 0,
+      "UserCount": 1,
+      "RoleCount": 15,
+      "ExtensionCount": 2,
+      "ProcedureCount": 0,
+      "ActiveConnectionCount": 1,
+      "Status": "Online",
+      "DatabaseType": "Postgres"
+    },
+    {
+      "Name": "postgres",
+      "Ip": "127.0.0.1/32",
+      "Size": 7696867,
+      "IndexCount": 0,
+      "FunctionCount": 0,
+      "TriggerCount": 0,
+      "ViewCount": 0,
+      "MaterializedViewCount": 0,
+      "UserCount": 1,
+      "RoleCount": 15,
+      "ExtensionCount": 1,
+      "ProcedureCount": 0,
+      "ActiveConnectionCount": 1,
+      "Status": "Online",
+      "DatabaseType": "Postgres"
+    }
+  ]
+}
+```
