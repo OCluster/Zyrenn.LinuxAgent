@@ -18,22 +18,30 @@ namespace Zyrenn.LinuxAgent.Services.Common;
 //todo handle if any service thorws an error, i think the worker should not be still active and send errors again and again.
 public sealed class DataPublisher : IAsyncDisposable
 {
-    private readonly IConnection _natsConnection;
+    #region Fields region
+
+    //---------------- Constants ----------------
+    private const int DefaultBlockSize = 4096;
+    private const int DefaultMaxBufferSize = 81920;
+    private const int DefaultLargeBufferMultiple = 1024;
+    //---------------- Constants ----------------
+
     private readonly IJetStream _jetStream;
+    private readonly IConnection _natsConnection;
     private readonly RecyclableMemoryStreamManager _streamManager;
 
-    private const int DefaultBlockSize = 4096;
-    private const int DefaultLargeBufferMultiple = 1024;
-    private const int DefaultMaxBufferSize = 81920; // Just below LOH threshold
+    #endregion
 
-    public DataPublisher(string url = "nats://168.231.105.212:4222/")
+    #region Constructors region
+
+    public DataPublisher(string url = "nats://nats-broker.zyrenn.com:4222")
     {
         var opts = ConnectionFactory.GetDefaultOptions();
         opts.Url = url;
 
         _natsConnection = new ConnectionFactory().CreateConnection(opts);
         _jetStream = _natsConnection.CreateJetStreamContext();
-        
+
         // Configure recyclable memory streams to reduce LOH allocations
         _streamManager = new RecyclableMemoryStreamManager(new RecyclableMemoryStreamManager.Options
         {
@@ -51,7 +59,11 @@ public sealed class DataPublisher : IAsyncDisposable
             }
         };
     }
-    
+
+    #endregion
+
+    #region Public methods region
+
     /// <summary>
     /// Publishes serialized data to a JetStream subject with minimal allocations.
     /// </summary>
@@ -114,4 +126,6 @@ public sealed class DataPublisher : IAsyncDisposable
             Log.Error(ex, "Error during disposal of data publisher.");
         }
     }
+
+    #endregion
 }

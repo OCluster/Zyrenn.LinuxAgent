@@ -1,5 +1,6 @@
 using Serilog;
 using Zyrenn.LinuxAgent;
+using Zyrenn.LinuxAgent.Helpers;
 using Zyrenn.LinuxAgent.Services.Common;
 using Zyrenn.LinuxAgent.Services.Containers;
 using Zyrenn.LinuxAgent.Services.Databases;
@@ -9,6 +10,7 @@ using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 var builder = Host.CreateApplicationBuilder(args);
 
+ConfigDataHelper.LoadConfiguration(builder.Configuration);
 builder.Services.AddHostedService<PeriodicDataProcessor>();
 builder.Services.AddSingleton<IHostMetricService, HostMetricService>();
 builder.Services.AddSingleton<IContainerService, ContainerService>();
