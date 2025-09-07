@@ -11,15 +11,18 @@ public readonly struct HostMetric
 {
     #region Constructors region
 
-    public HostMetric(IConfiguration config, //todo think whether this is good to get the iconfig value every init time
+    public HostMetric(
+        string name,
+        string tag,
+        string[] ips,
         CpuMetric cpuMetric,
         MemoryMetric memoryMetric,
         DiskMetric diskMetric,
         NetworkMetric networkMetric)
     {
-        Name = string.Intern(config.GetSection("Host:Name").Value ?? "unknown");
-        Tag =  string.Intern(config.GetSection("Host:Tag").Value ?? "unknown");
-        Ips =  config.GetSection("Host:Ips").Get<string[]>() ?? [];
+        Name = string.Intern(name);
+        Tag = string.Intern(tag);
+        Ips = ips;
         CpuUsage = cpuMetric;
         MemoryUsage = memoryMetric;
         DiskUsage = diskMetric;
@@ -38,31 +41,22 @@ public readonly struct HostMetric
 
     #region Metadata properties region
 
-    [ProtoMember(1)]
-    public string Name { get; }
+    [ProtoMember(1)] public string Name { get; }
 
-    [ProtoMember(2)]
-    public string Tag { get; }
-    [ProtoMember(3)]
-    public string[] Ips { get; }
+    [ProtoMember(2)] public string Tag { get; }
+    [ProtoMember(3)] public string[] Ips { get; }
 
-    [ProtoMember(4)] 
-    public DateTime TimeStamp { get; } = DateTime.UtcNow;
+    [ProtoMember(4)] public DateTime TimeStamp { get; } = DateTime.UtcNow;
 
-    [ProtoMember(5)]
-    public string OsType { get; } = "Linux";
+    [ProtoMember(5)] public string OsType { get; } = "Linux";
 
     #endregion
 
-    [ProtoMember(6)] 
-    public CpuMetric CpuUsage { get; }
+    [ProtoMember(6)] public CpuMetric CpuUsage { get; }
 
-    [ProtoMember(7)]
-    public MemoryMetric MemoryUsage { get; }
+    [ProtoMember(7)] public MemoryMetric MemoryUsage { get; }
 
-    [ProtoMember(8)]
-    public DiskMetric DiskUsage { get; }
+    [ProtoMember(8)] public DiskMetric DiskUsage { get; }
 
-    [ProtoMember(9)]
-    public NetworkMetric NetworkUsage { get; }
+    [ProtoMember(9)] public NetworkMetric NetworkUsage { get; }
 }

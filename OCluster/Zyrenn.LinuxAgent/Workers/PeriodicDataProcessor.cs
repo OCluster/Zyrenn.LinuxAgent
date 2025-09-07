@@ -3,6 +3,7 @@ using System.Text.Json;
 using NATS.Client.JetStream;
 using Serilog;
 using Serilog.Events;
+using Zyrenn.LinuxAgent.Helpers;
 using Zyrenn.LinuxAgent.Models.Common;
 using Zyrenn.LinuxAgent.Models.Hosts;
 using Zyrenn.LinuxAgent.Services.Common;
@@ -25,8 +26,8 @@ public class PeriodicDataProcessor(
 {
     #region Fields region
 
-    //private readonly DataPublisher _dataPublisher = new();
-    private readonly PeriodicTimer _timeToDelayJob = new (period: TimeSpan.FromSeconds(6));
+    private readonly DataPublisher _dataPublisher = new();
+    private readonly PeriodicTimer _timeToDelayJob = new(period: TimeSpan.FromSeconds(6));
 
     #endregion
 
@@ -38,29 +39,33 @@ public class PeriodicDataProcessor(
         {
             Log.Information("Host agent's data processor is running. About to process data.");
             while (!stoppingToken.IsCancellationRequested)
-            { 
+            {
                 try
-                {     
-                    //-----Host Metrics
+                {
                     var hostMetric = new HostMetric(
-                        configuration,
+                        name: ConfigDataHelper.HostName,
+                        tag: ConfigDataHelper.HostTag,
+                        ips: ConfigDataHelper.HostIps,
                         cpuMetric: await hostMetricService.GetCpuUsageAsync().ConfigureAwait(false),
                         memoryMetric: hostMetricService.GetMemoryUsage(),
                         diskMetric: hostMetricService.GetDiskMetrics(),
                         networkMetric: hostMetricService.GetNetworkUsage());
-                    Console.WriteLine(JsonSerializer.Serialize(hostMetric));
                     //Console.WriteLine(JsonSerializer.Serialize(hostMetric));
-                    //await _dataPublisher.PublishAsync("host_metric", hostMetric, stoppingToken);
+                    await _dataPublisher.PublishAsync("host_metric", hostMetric, stoppingToken);
 
                     //-----Container Data
                     var containers = await containerService.GetContainerListAsync(stoppingToken).ConfigureAwait(false);
-                    //Console.WriteLine(JsonSerializer.Serialize(containers));
-                    //await _dataPublisher.PublishAsync("container_metric",
+                    Console.WriteLine(JsonSerializer.Serialize(containers));
+                    //await _dataPublisher.PublishAsync("host_metric",
                     //    containers, stoppingToken);
 
                     //-----Db data
-                        //await _dataPublisher.PublishAsync("db_metric",
-                        //    await databaseService.GetDatabaseListAsync(stoppingToken), stoppingToken);
+                    //  await _dataPublisher.PublishAsync("db_metric",
+                    //      await databaseService.GetDatabaseListAsync(stoppingToken), stoppingToken);
+
+                    //var dbData = await databaseService.GetDatabaseListAsync(stoppingToken);
+                    //Console.WriteLine(JsonSerializer.Serialize(dbData));
+                    //;
 
                     if (!stoppingToken.IsCancellationRequested)
                     {

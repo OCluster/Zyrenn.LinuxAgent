@@ -17,6 +17,8 @@ public class ContainerService(IConfiguration configuration) : IContainerService
     #region Private fields region
 
     private readonly IConfiguration _configuration = configuration;
+    
+    //todo may be the count of threads will be retrieved form the configuration
     private readonly SemaphoreSlim _containerSemaphore = new(5, 5);
     private readonly SemaphoreSlim _shellCommandSemaphore = new(5, 5);
 
@@ -26,9 +28,6 @@ public class ContainerService(IConfiguration configuration) : IContainerService
 
     public async ValueTask<Container[]> GetContainerListAsync(CancellationToken cancellationToken)
     {
-        var hostName = string.Intern(_configuration.GetSection("Host:Name").Value ?? "unknown");
-        var hostTag = string.Intern(_configuration.GetSection("Host:Tag").Value ?? "unknown");
-        var hostIps = _configuration.GetSection("Host:Ips").Get<string[]>() ?? [];
         try
         {
             List<Container> containerList = new();
@@ -106,9 +105,9 @@ public class ContainerService(IConfiguration configuration) : IContainerService
                             memoryUsage: default,
                             diskUsage: diskMetric,
                             networkUsage: networkMetric,
-                            hostName,
-                            hostTag,
-                            hostIps
+                            ConfigDataHelper.HostName,
+                            ConfigDataHelper.HostTag,
+                            ConfigDataHelper.HostIps
                         ));
                     }
                     finally
@@ -138,7 +137,39 @@ public class ContainerService(IConfiguration configuration) : IContainerService
         }
     }
 
-    /*public async ValueTask<Container[]> ListContainersAsync(CancellationToken cancellationToken)
+    #endregion
+
+    #region Private methods region
+
+    private static Task<ContainerStatistic> ParseDockerStats(string rawOutput)
+    {
+        //The header line should be skipped
+        var lines = rawOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        if (lines.Length < 2) throw new FormatException("No stats data found");
+
+        // Regex to split columns while handling spaces in container names
+        var regex = new Regex(@"\s{2,}"); // Split on 2+ whitespace
+        var columns = regex.Split(lines[1].Trim()).Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();
+
+        if (columns.Length < 8)
+            throw new FormatException($"Unexpected column count: {columns.Length} when parsing docker stats.");
+
+        return Task.FromResult(new ContainerStatistic
+        (
+            cpuPercent: SystemMetricHelper.ParsePercentage(columns[2]),
+            memory: SystemMetricHelper.ParseMemory(columns[3]),
+            memoryPercent: SystemMetricHelper.ParsePercentage(columns[4]),
+            network: SystemMetricHelper.ParseNetwork(columns[5]),
+            blockIo: SystemMetricHelper.ParseBlockIO(columns[6])
+        ));
+    }
+
+    #endregion
+}
+
+#region Comments region
+
+/*public async ValueTask<Container[]> ListContainersAsync(CancellationToken cancellationToken)
     {
         try
         {
@@ -225,37 +256,6 @@ public class ContainerService(IConfiguration configuration) : IContainerService
             _containerList.Clear();
         }
     }*/
-
-    #endregion
-
-    #region Private methods region
-
-    private static Task<ContainerStatistic> ParseDockerStats(string rawOutput)
-    {
-        //The header line should be skipped
-        var lines = rawOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        if (lines.Length < 2) throw new FormatException("No stats data found");
-
-        // Regex to split columns while handling spaces in container names
-        var regex = new Regex(@"\s{2,}"); // Split on 2+ whitespace
-        var columns = regex.Split(lines[1].Trim()).Where(c => !string.IsNullOrWhiteSpace(c)).ToArray();
-
-        if (columns.Length < 8)
-            throw new FormatException($"Unexpected column count: {columns.Length} when parsing docker stats.");
-
-        return Task.FromResult(new ContainerStatistic
-        (
-            cpuPercent: SystemMetricHelper.ParsePercentage(columns[2]),
-            memory: SystemMetricHelper.ParseMemory(columns[3]),
-            memoryPercent: SystemMetricHelper.ParsePercentage(columns[4]),
-            network: SystemMetricHelper.ParseNetwork(columns[5]),
-            blockIo: SystemMetricHelper.ParseBlockIO(columns[6])
-        ));
-    }
-
-    #endregion
-}
-
 /* Memory issue
  Large Object Heap: code that allocates a lot of memory in LOH
    Allocated object type: Byte[]
@@ -295,3 +295,5 @@ public class ContainerService(IConfiguration configuration) : IContainerService
    at ThreadPoolWorkQueue.Dispatch()
 
  */
+
+#endregion
