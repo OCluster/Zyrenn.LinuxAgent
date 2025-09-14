@@ -55,7 +55,7 @@ public class PeriodicDataProcessor(
 
                     //-----Container Data
                     var containers = await containerService.GetContainerListAsync(stoppingToken).ConfigureAwait(false);
-                    Console.WriteLine(JsonSerializer.Serialize(containers));
+                    //Console.WriteLine(JsonSerializer.Serialize(containers));
                     //await _dataPublisher.PublishAsync("host_metric",
                     //    containers, stoppingToken);
 
@@ -63,8 +63,8 @@ public class PeriodicDataProcessor(
                     //  await _dataPublisher.PublishAsync("db_metric",
                     //      await databaseService.GetDatabaseListAsync(stoppingToken), stoppingToken);
 
-                    //var dbData = await databaseService.GetDatabaseListAsync(stoppingToken);
-                    //Console.WriteLine(JsonSerializer.Serialize(dbData));
+                    var dbData = await databaseService.GetDatabaseListAsync(stoppingToken);
+                    Console.WriteLine(JsonSerializer.Serialize(dbData));
                     //;
 
                     if (!stoppingToken.IsCancellationRequested)

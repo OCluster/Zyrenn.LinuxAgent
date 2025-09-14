@@ -142,7 +142,7 @@ public class ContainerService(IConfiguration configuration) : IContainerService
     #region Private methods region
 
     private static Task<ContainerStatistic> ParseDockerStats(string rawOutput)
-    {
+    {   
         //The header line should be skipped
         var lines = rawOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         if (lines.Length < 2) throw new FormatException("No stats data found");

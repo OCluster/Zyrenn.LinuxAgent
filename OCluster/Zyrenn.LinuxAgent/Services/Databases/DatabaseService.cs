@@ -60,13 +60,15 @@ public class DatabaseService : IDatabaseService
         return metrics;
     }
 
+    
     public async ValueTask<DatabaseDetail> GetPostgresDetailAsync(
         string connectionString,
         CancellationToken ct)
     {
         await using var conn = new NpgsqlConnection(connectionString);
         await conn.OpenAsync(ct);
-
+        
+        //todo move queries to a nuget package.
         var cmd = new NpgsqlCommand(
             @"SELECT
     current_database() AS name,
@@ -113,7 +115,7 @@ public class DatabaseService : IDatabaseService
         FROM pg_matviews
         WHERE schemaname NOT LIKE 'pg_%' AND schemaname != 'information_schema'
     ) AS materialized_views,
-    
+
     -- Users
     (
         SELECT COUNT(*)
@@ -133,23 +135,16 @@ public class DatabaseService : IDatabaseService
     ) AS extensions,
 
     -- Procedures
-    (
-        SELECT COUNT(*)
-        FROM pg_proc
-        WHERE prokind = 'p'
-    ) AS procedures,
-    (
-        SELECT
-            CASE
-                WHEN EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = 'zyrenn')
-                    THEN 'Online'
-                ELSE 'Offline'
-                END AS status
-    ) as status,
-    (
-        SELECT COUNT(*) FROM pg_stat_activity 
-        WHERE datname = current_database() and state = 'active'
-    ) as active_connections;", conn);
+    (SELECT COUNT(*)
+     FROM pg_proc
+     WHERE prokind = 'p')           AS procedures,
+    (SELECT CASE
+                WHEN EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database()) THEN 'Online'
+                ELSE 'Offline' END) AS status,
+    (SELECT COUNT(*)
+     FROM pg_stat_activity
+     WHERE datname = current_database()
+       and state = 'active')        as active_connections;", conn);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         await reader.ReadAsync(ct);
@@ -170,7 +165,7 @@ public class DatabaseService : IDatabaseService
             ProcedureCount = reader.GetInt32(reader.GetOrdinal("procedures")),
             Status = reader.GetString(reader.GetOrdinal("status")),
             ActiveConnectionCount = reader.GetInt32(reader.GetOrdinal("active_connections")),
-            DatabaseType = Enum.GetName(DatabaseType.Postgres),
+            DatabaseType = Enum.GetName(DatabaseType.Postgres)!,
         };
     }
 
