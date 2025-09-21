@@ -1,4 +1,5 @@
 using Npgsql;
+using Zyrenn.DatabaseQHub.QueryHub.PostgreSQL;
 using Zyrenn.LinuxAgent.Models.Common;
 using Zyrenn.LinuxAgent.Models.Databases;
 
@@ -18,8 +19,7 @@ public class DatabaseService : IDatabaseService
     public DatabaseService(IConfiguration config, ILogger<DatabaseService> logger)
     {
         _logger = logger;
-        _dbConfigs = config.GetSection("DatabaseConnections")
-            .Get<List<DatabaseConfig>>();
+        _dbConfigs = config.GetSection("DatabaseConnections").Get<List<DatabaseConfig>>();
     }
 
     #endregion
@@ -49,102 +49,26 @@ public class DatabaseService : IDatabaseService
                 }
                 catch (NpgsqlException ex) when (ex.InnerException is TimeoutException)
                 {
-                } //todo return Offline if the db is offline, focus on TimeOu
+                } 
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, $"Failed to collect database metrics for {dbConfig.Connection}");
                 }
             }
-        }
+        } //todo may be handle the null case, so if the worker is enabled and the config is not present, it will not collect metrics
 
         return metrics;
     }
 
-    
+
     public async ValueTask<DatabaseDetail> GetPostgresDetailAsync(
         string connectionString,
         CancellationToken ct)
     {
         await using var conn = new NpgsqlConnection(connectionString);
         await conn.OpenAsync(ct);
-        
-        //todo move queries to a nuget package.
-        var cmd = new NpgsqlCommand(
-            @"SELECT
-    current_database() AS name,
-    inet_server_addr()::varchar AS ip,
-    pg_database_size(current_database()) AS size,
-    -- Indexes
-    (
-        SELECT COUNT(*)
-        FROM pg_class
-        WHERE relkind = 'i'
-          AND relnamespace IN (
-            SELECT oid FROM pg_namespace
-            WHERE nspname NOT LIKE 'pg_%' AND nspname != 'information_schema'
-        )
-    ) AS indexes,
 
-    -- Functions
-    (
-        SELECT COUNT(*)
-        FROM pg_proc
-        WHERE pronamespace IN (
-            SELECT oid FROM pg_namespace
-            WHERE nspname NOT LIKE 'pg_%' AND nspname != 'information_schema'
-        )
-    ) AS functions,
-
-    -- Triggers
-    (
-        SELECT COUNT(*)
-        FROM pg_trigger
-        WHERE NOT tgisinternal
-    ) AS triggers,
-
-    -- Views
-    (
-        SELECT COUNT(*)
-        FROM pg_views
-        WHERE schemaname NOT LIKE 'pg_%' AND schemaname != 'information_schema'
-    ) AS views,
-
-    -- Materialized Views
-    (
-        SELECT COUNT(*)
-        FROM pg_matviews
-        WHERE schemaname NOT LIKE 'pg_%' AND schemaname != 'information_schema'
-    ) AS materialized_views,
-
-    -- Users
-    (
-        SELECT COUNT(*)
-        FROM pg_user
-    ) AS users,
-
-    -- Roles
-    (
-        SELECT COUNT(*)
-        FROM pg_roles
-    ) AS roles,
-
-    -- Extensions
-    (
-        SELECT COUNT(*)
-        FROM pg_extension
-    ) AS extensions,
-
-    -- Procedures
-    (SELECT COUNT(*)
-     FROM pg_proc
-     WHERE prokind = 'p')           AS procedures,
-    (SELECT CASE
-                WHEN EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = current_database()) THEN 'Online'
-                ELSE 'Offline' END) AS status,
-    (SELECT COUNT(*)
-     FROM pg_stat_activity
-     WHERE datname = current_database()
-       and state = 'active')        as active_connections;", conn);
+        var cmd = new NpgsqlCommand(cmdText: PostgreSqlQueryHandler.GetDbMetadata(), conn);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         await reader.ReadAsync(ct);

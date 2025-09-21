@@ -63,6 +63,8 @@ public class PeriodicDataProcessor(
                     //  await _dataPublisher.PublishAsync("db_metric",
                     //      await databaseService.GetDatabaseListAsync(stoppingToken), stoppingToken);
 
+                    
+                    //todo may be add tag to the db model.
                     var dbData = await databaseService.GetDatabaseListAsync(stoppingToken);
                     Console.WriteLine(JsonSerializer.Serialize(dbData));
                     //;
