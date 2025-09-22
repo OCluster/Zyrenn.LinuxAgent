@@ -1,64 +1,60 @@
 using Npgsql;
+using Zyrenn.DatabaseQHub.QueryHub.PostgreSQL;
+using Zyrenn.LinuxAgent.Helpers;
 using Zyrenn.LinuxAgent.Models.Common;
+using Zyrenn.LinuxAgent.Models.Common.Config;
 using Zyrenn.LinuxAgent.Models.Databases;
 
 namespace Zyrenn.LinuxAgent.Services.Databases;
 
-public class DatabaseService : IDatabaseService
+public class DatabaseService(ILogger<DatabaseService> logger) : IDatabaseService
 {
-    #region Private fields region
-
-    private readonly List<DatabaseConfig>? _dbConfigs;
-    private readonly ILogger<DatabaseService> _logger;
-
-    #endregion
-
-    #region Constrcutors region
-
-    public DatabaseService(IConfiguration config, ILogger<DatabaseService> logger)
-    {
-        _logger = logger;
-        _dbConfigs = config.GetSection("DatabaseConnections")
-            .Get<List<DatabaseConfig>>();
-    }
-
-    #endregion
-
     #region Methods region
 
     #region Public methods region
 
     /// <summary>
-    /// Retrieves a list of databases along with their detailed metrics, consolidating data from multiple database configurations.
+    /// Retrieves a list of databases along with their detailed data,
+    /// getting it from multiple database configurations.
     /// </summary> todo consider database versioning
     public async ValueTask<DatabaseList> GetDatabaseListAsync(CancellationToken ct)
     {
-        var metrics = new DatabaseList();
+        var dbDataList = new DatabaseList();
 
-        if (_dbConfigs != null)
+        if (ConfigDataHelper.DbConfigs == null || !ConfigDataHelper.DbConfigs.Any())
         {
-            foreach (var dbConfig in _dbConfigs)
+            logger.LogWarning("Database configuration is missing or empty.");
+            return dbDataList;
+        }
+
+        foreach (var dbConfig in ConfigDataHelper.DbConfigs)
+        {
+            try
             {
-                try
-                {
-                    var dbMetrics = await CollectDatabaseDetailAsync(dbConfig.Type, dbConfig.Connection, ct);
-                    metrics.Databases.Add(dbMetrics);
-                }
-                catch (PostgresException ex) when (ex.SqlState == "57014")
-                {
-                }
-                catch (NpgsqlException ex) when (ex.InnerException is TimeoutException)
-                {
-                } //todo return Offline if the db is offline, focus on TimeOu
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, $"Failed to collect database metrics for {dbConfig.Connection}");
-                }
+                var dbDetail = await CollectDatabaseDetailAsync(dbConfig.Type, dbConfig.Connection, ct);
+                dbDataList.Databases.Add(dbDetail);
+            }
+            catch (PostgresException ex) when (ex.SqlState == "57014")
+            {
+                logger.LogInformation("Query canceled while collecting data for database [{Connection}].",
+                    dbConfig.Connection);
+            }
+            catch (NpgsqlException ex) when (ex.InnerException is TimeoutException)
+            {
+                logger.LogWarning("Timeout occurred while collecting data for database [{Connection}].",
+                    dbConfig.Connection);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unexpected error while collecting database detail for [{Connection}].",
+                    dbConfig.Connection);
             }
         }
 
-        return metrics;
+        return dbDataList;
     }
+
+
 
     public async ValueTask<DatabaseDetail> GetPostgresDetailAsync(
         string connectionString,
@@ -67,89 +63,7 @@ public class DatabaseService : IDatabaseService
         await using var conn = new NpgsqlConnection(connectionString);
         await conn.OpenAsync(ct);
 
-        var cmd = new NpgsqlCommand(
-            @"SELECT
-    current_database() AS name,
-    inet_server_addr()::varchar AS ip,
-    pg_database_size(current_database()) AS size,
-    -- Indexes
-    (
-        SELECT COUNT(*)
-        FROM pg_class
-        WHERE relkind = 'i'
-          AND relnamespace IN (
-            SELECT oid FROM pg_namespace
-            WHERE nspname NOT LIKE 'pg_%' AND nspname != 'information_schema'
-        )
-    ) AS indexes,
-
-    -- Functions
-    (
-        SELECT COUNT(*)
-        FROM pg_proc
-        WHERE pronamespace IN (
-            SELECT oid FROM pg_namespace
-            WHERE nspname NOT LIKE 'pg_%' AND nspname != 'information_schema'
-        )
-    ) AS functions,
-
-    -- Triggers
-    (
-        SELECT COUNT(*)
-        FROM pg_trigger
-        WHERE NOT tgisinternal
-    ) AS triggers,
-
-    -- Views
-    (
-        SELECT COUNT(*)
-        FROM pg_views
-        WHERE schemaname NOT LIKE 'pg_%' AND schemaname != 'information_schema'
-    ) AS views,
-
-    -- Materialized Views
-    (
-        SELECT COUNT(*)
-        FROM pg_matviews
-        WHERE schemaname NOT LIKE 'pg_%' AND schemaname != 'information_schema'
-    ) AS materialized_views,
-    
-    -- Users
-    (
-        SELECT COUNT(*)
-        FROM pg_user
-    ) AS users,
-
-    -- Roles
-    (
-        SELECT COUNT(*)
-        FROM pg_roles
-    ) AS roles,
-
-    -- Extensions
-    (
-        SELECT COUNT(*)
-        FROM pg_extension
-    ) AS extensions,
-
-    -- Procedures
-    (
-        SELECT COUNT(*)
-        FROM pg_proc
-        WHERE prokind = 'p'
-    ) AS procedures,
-    (
-        SELECT
-            CASE
-                WHEN EXISTS (SELECT 1 FROM pg_stat_activity WHERE datname = 'zyrenn')
-                    THEN 'Online'
-                ELSE 'Offline'
-                END AS status
-    ) as status,
-    (
-        SELECT COUNT(*) FROM pg_stat_activity 
-        WHERE datname = current_database() and state = 'active'
-    ) as active_connections;", conn);
+        var cmd = new NpgsqlCommand(cmdText: PostgreSqlQueryHandler.GetDbMetadata(), conn);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         await reader.ReadAsync(ct);
@@ -170,7 +84,7 @@ public class DatabaseService : IDatabaseService
             ProcedureCount = reader.GetInt32(reader.GetOrdinal("procedures")),
             Status = reader.GetString(reader.GetOrdinal("status")),
             ActiveConnectionCount = reader.GetInt32(reader.GetOrdinal("active_connections")),
-            DatabaseType = Enum.GetName(DatabaseType.Postgres),
+            DatabaseType = Enum.GetName(DatabaseType.Postgres)!,
         };
     }
 
