@@ -21,12 +21,11 @@ namespace Zyrenn.LinuxAgent.Workers;
 public class PeriodicDataProcessor(
     IHostMetricService hostMetricService,
     IContainerService containerService,
-    IDatabaseService databaseService,
-    IConfiguration configuration) : BackgroundService
+    IDatabaseService databaseService) : BackgroundService
 {
     #region Fields region
 
-    private readonly DataPublisher _dataPublisher = new();
+    //private readonly DataPublisher _dataPublisher = new();
     private readonly PeriodicTimer _timeToDelayJob = new(period: TimeSpan.FromSeconds(6));
 
     #endregion
@@ -43,15 +42,15 @@ public class PeriodicDataProcessor(
                 try
                 {
                     var hostMetric = new HostMetric(
-                        name: ConfigDataHelper.HostName,
-                        tag: ConfigDataHelper.HostTag,
-                        ips: ConfigDataHelper.HostIps,
+                        name: ConfigDataHelper.HostConfig.Name,
+                        tag: ConfigDataHelper.HostConfig.Tag,
+                        ips: ConfigDataHelper.HostConfig.Ips,
                         cpuMetric: await hostMetricService.GetCpuUsageAsync().ConfigureAwait(false),
                         memoryMetric: hostMetricService.GetMemoryUsage(),
                         diskMetric: hostMetricService.GetDiskMetrics(),
                         networkMetric: hostMetricService.GetNetworkUsage());
                     //Console.WriteLine(JsonSerializer.Serialize(hostMetric));
-                    await _dataPublisher.PublishAsync("host_metric", hostMetric, stoppingToken);
+                    //await _dataPublisher.PublishAsync("host_metric", hostMetric, stoppingToken);
 
                     //-----Container Data
                     var containers = await containerService.GetContainerListAsync(stoppingToken).ConfigureAwait(false);

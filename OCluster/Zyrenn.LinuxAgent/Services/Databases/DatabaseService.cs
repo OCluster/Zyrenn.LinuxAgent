@@ -1,64 +1,59 @@
 using Npgsql;
 using Zyrenn.DatabaseQHub.QueryHub.PostgreSQL;
+using Zyrenn.LinuxAgent.Helpers;
 using Zyrenn.LinuxAgent.Models.Common;
+using Zyrenn.LinuxAgent.Models.Common.Config;
 using Zyrenn.LinuxAgent.Models.Databases;
 
 namespace Zyrenn.LinuxAgent.Services.Databases;
 
-public class DatabaseService : IDatabaseService
+public class DatabaseService(ILogger<DatabaseService> logger) : IDatabaseService
 {
-    #region Private fields region
-
-    private readonly List<DatabaseConfig>? _dbConfigs;
-    private readonly ILogger<DatabaseService> _logger;
-
-    #endregion
-
-    #region Constrcutors region
-
-    public DatabaseService(IConfiguration config, ILogger<DatabaseService> logger)
-    {
-        _logger = logger;
-        _dbConfigs = config.GetSection("DatabaseConnections").Get<List<DatabaseConfig>>();
-    }
-
-    #endregion
-
     #region Methods region
 
     #region Public methods region
 
     /// <summary>
-    /// Retrieves a list of databases along with their detailed metrics, consolidating data from multiple database configurations.
+    /// Retrieves a list of databases along with their detailed data,
+    /// getting it from multiple database configurations.
     /// </summary> todo consider database versioning
     public async ValueTask<DatabaseList> GetDatabaseListAsync(CancellationToken ct)
     {
-        var metrics = new DatabaseList();
+        var dbDataList = new DatabaseList();
 
-        if (_dbConfigs != null)
+        if (ConfigDataHelper.DbConfigs == null || !ConfigDataHelper.DbConfigs.Any())
         {
-            foreach (var dbConfig in _dbConfigs)
-            {
-                try
-                {
-                    var dbMetrics = await CollectDatabaseDetailAsync(dbConfig.Type, dbConfig.Connection, ct);
-                    metrics.Databases.Add(dbMetrics);
-                }
-                catch (PostgresException ex) when (ex.SqlState == "57014")
-                {
-                }
-                catch (NpgsqlException ex) when (ex.InnerException is TimeoutException)
-                {
-                } 
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, $"Failed to collect database metrics for {dbConfig.Connection}");
-                }
-            }
-        } //todo may be handle the null case, so if the worker is enabled and the config is not present, it will not collect metrics
+            logger.LogWarning("Database configuration is missing or empty.");
+            return dbDataList;
+        }
 
-        return metrics;
+        foreach (var dbConfig in ConfigDataHelper.DbConfigs)
+        {
+            try
+            {
+                var dbDetail = await CollectDatabaseDetailAsync(dbConfig.Type, dbConfig.Connection, ct);
+                dbDataList.Databases.Add(dbDetail);
+            }
+            catch (PostgresException ex) when (ex.SqlState == "57014")
+            {
+                logger.LogInformation("Query canceled while collecting data for database [{Connection}].",
+                    dbConfig.Connection);
+            }
+            catch (NpgsqlException ex) when (ex.InnerException is TimeoutException)
+            {
+                logger.LogWarning("Timeout occurred while collecting data for database [{Connection}].",
+                    dbConfig.Connection);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unexpected error while collecting database detail for [{Connection}].",
+                    dbConfig.Connection);
+            }
+        }
+
+        return dbDataList;
     }
+
 
 
     public async ValueTask<DatabaseDetail> GetPostgresDetailAsync(

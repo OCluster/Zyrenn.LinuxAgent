@@ -1,3 +1,5 @@
+using Zyrenn.LinuxAgent.Models.Common.Config;
+
 namespace Zyrenn.LinuxAgent.Helpers;
 
 /// <summary>
@@ -5,13 +7,12 @@ namespace Zyrenn.LinuxAgent.Helpers;
 /// This is done to avoid retrieving the config data from the config file every time,
 /// or passing it continuously to methods.
 /// </summary>
-public class ConfigDataHelper
+public static class ConfigDataHelper
 {
     #region Fields region
 
-    public static string HostName { get; private set; } = "unknown";
-    public static string HostTag { get; private set; } = "unknown";
-    public static string[] HostIps { get; private set; } = Array.Empty<string>();
+    public static HostConfig HostConfig { get; set; }
+    public static List<DatabaseConfig>? DbConfigs { get; set; }
 
     #endregion
 
@@ -19,10 +20,18 @@ public class ConfigDataHelper
 
     public static void LoadConfiguration(IConfiguration configuration)
     {
-        HostName = configuration.GetSection("Host:Name").Value ?? "unknown";
-        HostTag = configuration.GetSection("Host:Tag").Value ?? "unknown";
-        HostIps = configuration.GetSection("Host:Ips").Get<string[]>() ?? Array.Empty<string>();
+        HostConfig = new HostConfig()
+        {
+            Name = configuration.GetSection("Host:Name").Value ?? "unknown",
+            Tag = configuration.GetSection("Host:Tag").Value ?? "unknown",
+            Ips = configuration.GetSection("Host:Ips").Get<string[]>() ?? []
+        };
+        
+        DbConfigs = configuration.GetSection("DatabaseConnections").Get<List<DatabaseConfig>>();
     }
+
+
+    //todo may be we have to have here also the the config for the database connections and other as well.
 
     #endregion
 }

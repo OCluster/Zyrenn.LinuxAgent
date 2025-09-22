@@ -1,6 +1,6 @@
 using Zyrenn.LinuxAgent.Models.Databases;
 
-namespace Zyrenn.LinuxAgent.Models.Common;
+namespace Zyrenn.LinuxAgent.Models.Common.Config;
 
 public struct DatabaseConfig
 {
