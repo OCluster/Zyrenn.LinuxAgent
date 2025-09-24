@@ -55,7 +55,6 @@ public class DatabaseService(ILogger<DatabaseService> logger) : IDatabaseService
     }
 
 
-
     public async ValueTask<DatabaseDetail> GetPostgresDetailAsync(
         string connectionString,
         CancellationToken ct)
@@ -72,6 +71,7 @@ public class DatabaseService(ILogger<DatabaseService> logger) : IDatabaseService
         {
             Name = reader.GetString(reader.GetOrdinal("name")),
             Ip = reader.GetString(reader.GetOrdinal("ip")),
+            HostTag = ConfigDataHelper.HostConfig.Tag,
             Size = reader.GetInt64(reader.GetOrdinal("Size")),
             IndexCount = reader.GetInt32(reader.GetOrdinal("indexes")),
             FunctionCount = reader.GetInt32(reader.GetOrdinal("functions")),

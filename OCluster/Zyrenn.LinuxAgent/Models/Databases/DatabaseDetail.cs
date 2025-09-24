@@ -7,6 +7,7 @@ public struct DatabaseDetail
 {
     public string Name { get; set; }
     public string Ip { get; set; }
+    public string HostTag { get; set; }
     public long Size { get; set; }
     public int IndexCount { get; set; }
     public int FunctionCount { get; set; }
