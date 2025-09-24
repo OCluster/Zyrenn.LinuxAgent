@@ -105,9 +105,7 @@ public class ContainerService(IConfiguration configuration) : IContainerService
                             memoryUsage: default,
                             diskUsage: diskMetric,
                             networkUsage: networkMetric,
-                            ConfigDataHelper.HostConfig.Name,
-                            ConfigDataHelper.HostConfig.Tag,
-                            ConfigDataHelper.HostConfig.Ips
+                            ConfigDataHelper.HostConfig.Tag
                         ));
                     }
                     finally
