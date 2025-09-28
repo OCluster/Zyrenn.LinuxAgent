@@ -1,3 +1,4 @@
+using Serilog;
 using Zyrenn.LinuxAgent.Models.Common.Config;
 
 namespace Zyrenn.LinuxAgent.Helpers;
@@ -39,9 +40,9 @@ public static class ConfigDataHelper
         var communicationKey = configuration.GetSection("CommunicationKey").Value;
 
         ArgumentException.ThrowIfNullOrEmpty(communicationKey,
-            paramName: "CommunicationKey is required and cannot be empty");
+            paramName: "Communication key is required and cannot be empty.");
         ArgumentException.ThrowIfNullOrEmpty(hostTag,
-            paramName: "Host Tag is required and cannot be empty"); //todo consider may be if the tag is empty, we can use the host name instead.
+            paramName: "Host tag is required and cannot be empty."); //todo consider may be if the tag is empty, we can use the host name instead.
 
         CommunicationKey = communicationKey;
         HostConfig = new HostConfig()
@@ -53,8 +54,6 @@ public static class ConfigDataHelper
 
         DbConfigs = configuration.GetSection("DatabaseConnections").Get<List<DatabaseConfig>>();
     }
-
-    //todo may be we have to have here also the the config for the database connections and other as well.
 
     #endregion
 }

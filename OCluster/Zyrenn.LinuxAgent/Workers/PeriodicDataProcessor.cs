@@ -65,7 +65,7 @@ public class PeriodicDataProcessor(
                     
                     //todo may be add tag to the db model.
                     var dbData = await databaseService.GetDatabaseListAsync(stoppingToken);
-                    Console.WriteLine(JsonSerializer.Serialize(dbData));
+                    //Console.WriteLine(JsonSerializer.Serialize(dbData));
                     //;
 
                     if (!stoppingToken.IsCancellationRequested)
@@ -75,7 +75,7 @@ public class PeriodicDataProcessor(
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.Warning("Cancellation is requested by a host agent. Stopping data processor.");
+                    Log.Warning("Cancellation is requested by a host agent. Stopping agent's worker.");
                     return;
                 }
                 catch (Exception ex)
