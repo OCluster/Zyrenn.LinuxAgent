@@ -16,7 +16,7 @@ public class DatabaseService(ILogger<DatabaseService> logger) : IDatabaseService
     /// <summary>
     /// Retrieves a list of databases along with their detailed data,
     /// getting it from multiple database configurations.
-    /// </summary> todo consider database versioning
+    /// </summary>
     public async ValueTask<DatabaseList> GetDatabaseListAsync(CancellationToken ct)
     {
         var dbDataList = new DatabaseList();
@@ -38,16 +38,19 @@ public class DatabaseService(ILogger<DatabaseService> logger) : IDatabaseService
             {
                 logger.LogInformation("Query canceled while collecting data for database [{Connection}].",
                     dbConfig.Connection);
+                throw;
             }
             catch (NpgsqlException ex) when (ex.InnerException is TimeoutException)
             {
                 logger.LogWarning("Timeout occurred while collecting data for database [{Connection}].",
                     dbConfig.Connection);
+                throw;
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Unexpected error while collecting database detail for [{Connection}].",
                     dbConfig.Connection);
+                throw;
             }
         }
 
@@ -69,7 +72,6 @@ public class DatabaseService(ILogger<DatabaseService> logger) : IDatabaseService
 
         return new DatabaseDetail
         {
-            HostTag = ConfigDataHelper.HostConfig.Tag,
             Name = reader.GetString(reader.GetOrdinal("name")),
             Ip = reader.GetString(reader.GetOrdinal("ip")),
             Size = reader.GetInt64(reader.GetOrdinal("Size")),

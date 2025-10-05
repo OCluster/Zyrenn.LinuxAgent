@@ -46,7 +46,7 @@ public class HostMetricService : IHostMetricService
             //  values[3]: idle time
             //  values[4]: iowait time
             //=========== Attention ===========
-            long idle = values[3] + values[4]; //todo analyze whether leave values[3] for filling idle value.
+            long idle = values[3] + values[4];
             long total = 0;
             foreach (long val in values) total += val;
 

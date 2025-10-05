@@ -6,6 +6,7 @@ using NATS.Client;
 using NATS.Client.JetStream;
 using ProtoBuf;
 using Serilog;
+using Zyrenn.LinuxAgent.Helpers;
 using Serializer = ProtoBuf.Serializer;
 
 namespace Zyrenn.LinuxAgent.Services.Common;
@@ -15,7 +16,6 @@ namespace Zyrenn.LinuxAgent.Services.Common;
 /// minimal allocations using pooled buffers and recyclable memory streams.
 /// </summary>
 
-//todo handle if any service thorws an error, i think the worker should not be still active and send errors again and again.
 public sealed class DataPublisher : IAsyncDisposable
 {
     #region Fields region
@@ -29,35 +29,57 @@ public sealed class DataPublisher : IAsyncDisposable
     private readonly IJetStream _jetStream;
     private readonly IConnection _natsConnection;
     private readonly RecyclableMemoryStreamManager _streamManager;
+    
+    /// <summary>
+    /// This field will be used as a message header in every msg being published with NATS.
+    /// Any change to config will require either manual or auto reload, to reflect changes is a msg header values.
+    /// </summary>
+    private MsgHeader _baseMsgHeader = new MsgHeader()
+    {
+        {
+            "communication_key", ConfigDataHelper.CommunicationKey
+        },
+        {
+            "host_identifier", ConfigDataHelper.HostConfig.Identifier
+        }
+    };
 
     #endregion
 
     #region Constructors region
 
-    public DataPublisher(string url = "nats://nats-broker.zyrenn.com:4222")
+    public DataPublisher(string url = "nats://nats-broker.zyrenn.com")
     {
-        var opts = ConnectionFactory.GetDefaultOptions();
-        opts.Url = url;
-
-        _natsConnection = new ConnectionFactory().CreateConnection(opts);
-        _jetStream = _natsConnection.CreateJetStreamContext();
-
-        // Configure recyclable memory streams to reduce LOH allocations
-        _streamManager = new RecyclableMemoryStreamManager(new RecyclableMemoryStreamManager.Options
+        try
         {
-            BlockSize = DefaultBlockSize,
-            LargeBufferMultiple = DefaultLargeBufferMultiple,
-            MaximumBufferSize = DefaultMaxBufferSize
-        });
+            var opts = ConnectionFactory.GetDefaultOptions();
+            opts.Url = url;
 
-        // Hook for large buffer diagnostics
-        _streamManager.StreamCreated += (sender, args) =>
-        {
-            if (args.RequestedSize > DefaultMaxBufferSize)
+            _natsConnection = new ConnectionFactory().CreateConnection(opts);
+            _jetStream = _natsConnection.CreateJetStreamContext();
+
+            // Configure recyclable memory streams to reduce LOH allocations
+            _streamManager = new RecyclableMemoryStreamManager(new RecyclableMemoryStreamManager.Options
             {
-                Log.Warning("Large buffer requested: {Size} bytes", args.RequestedSize);
-            }
-        };
+                BlockSize = DefaultBlockSize,
+                LargeBufferMultiple = DefaultLargeBufferMultiple,
+                MaximumBufferSize = DefaultMaxBufferSize
+            });
+
+            // Hook for large buffer diagnostics
+            _streamManager.StreamCreated += (sender, args) =>
+            {
+                if (args.RequestedSize > DefaultMaxBufferSize)
+                {
+                    Log.Warning("Large buffer requested: {Size} bytes", args.RequestedSize);
+                }
+            };
+        }
+        catch (Exception e)
+        {
+            Log.Error(e.Message); //todo adjust the log.
+            throw;
+        }
     }
 
     #endregion
@@ -91,10 +113,12 @@ public sealed class DataPublisher : IAsyncDisposable
             await stream.ReadExactlyAsync(buffer, 0, size, cancellation);
 
             // Publish asynchronously to JetStream with acknowledgment
-            await _jetStream.PublishAsync(subject, buffer[..size]);
+            await _jetStream.PublishAsync(subject, _baseMsgHeader, buffer[..size]);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException ex)
         {
+            Log.Error(ex, "Publish failed for subject {Subject}",
+                subject); //todo may be change error cases to fatal. since not all logs should be visible to client.
             throw;
         }
         catch (Exception ex)

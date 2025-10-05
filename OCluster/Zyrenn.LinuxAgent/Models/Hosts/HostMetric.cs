@@ -13,7 +13,7 @@ public readonly struct HostMetric
 
     public HostMetric(
         string name,
-        string tag,
+        string identifier,
         string[] ips,
         CpuMetric cpuMetric,
         MemoryMetric memoryMetric,
@@ -21,7 +21,7 @@ public readonly struct HostMetric
         NetworkMetric networkMetric)
     {
         Name = string.Intern(name);
-        Tag = string.Intern(tag);
+        Identifier = string.Intern(identifier);
         Ips = ips;
         CpuUsage = cpuMetric;
         MemoryUsage = memoryMetric;
@@ -43,7 +43,10 @@ public readonly struct HostMetric
 
     [ProtoMember(1)] public string Name { get; }
 
-    [ProtoMember(2)] public string Tag { get; }
+    /// <summary>
+    /// This is a sort of tag that helps identify which host it is.
+    /// </summary>
+    [ProtoMember(2)] public string Identifier { get; }
     [ProtoMember(3)] public string[] Ips { get; }
 
     [ProtoMember(4)] public DateTime TimeStamp { get; } = DateTime.UtcNow;

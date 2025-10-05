@@ -1,23 +1,14 @@
 using ProtoBuf;
+using Zyrenn.LinuxAgent.Helpers;
 
 namespace Zyrenn.LinuxAgent.Models.Databases;
 
 [ProtoContract]
-public readonly struct DatabaseList
+public readonly struct DatabaseList()
 {
-    #region Constructors region
-
-    public DatabaseList()
-    {
-        Timestamp = DateTime.UtcNow;
-        Databases = new();
-    }
-
-    #endregion
-
     [ProtoMember(1)]
-    public DateTime Timestamp { get; }
+    public DateTime Timestamp { get; } = DateTime.UtcNow;
     
-    [ProtoMember(2)]
-    public List<DatabaseDetail> Databases { get; }
+    [ProtoMember(3)]
+    public List<DatabaseDetail> Databases { get; } = [];
 }

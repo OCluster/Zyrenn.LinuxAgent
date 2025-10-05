@@ -16,20 +16,18 @@ public readonly struct Container //obj takes ~ 158 bytes
         CpuMetric cpuUsage,
         MemoryMetric memoryUsage,
         DiskMetric diskUsage,
-        NetworkMetric networkUsage, 
-        string tag)
+        NetworkMetric networkUsage)
     {
         Detail = detail;
         CpuUsage = cpuUsage;
         MemoryUsage = memoryUsage;
         DiskUsage = diskUsage;
         NetworkUsage = networkUsage;
-        HostTag = tag;
     }
 
     #endregion
 
-    [ProtoMember(1)] //todo add source ip
+    [ProtoMember(1)]
     public ContainerDetail Detail { get; }
 
     [ProtoMember(2)]
@@ -43,7 +41,4 @@ public readonly struct Container //obj takes ~ 158 bytes
 
     [ProtoMember(5)]
     public NetworkMetric NetworkUsage { get; }
-    
-    [ProtoMember(6)] 
-    public string HostTag { get; }
 }

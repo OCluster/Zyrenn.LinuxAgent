@@ -25,8 +25,9 @@ public class PeriodicDataProcessor(
 {
     #region Fields region
 
-    //private readonly DataPublisher _dataPublisher = new();
-    private readonly PeriodicTimer _timeToDelayJob = new(period: TimeSpan.FromSeconds(6));
+    private readonly DataPublisher _dataPublisher = new();
+    private readonly PeriodicTimer _timeToDelayJob = new(
+        period: TimeSpan.FromSeconds(ConfigDataHelper.ScrapeInterval));
 
     #endregion
 
@@ -43,31 +44,33 @@ public class PeriodicDataProcessor(
                 {
                     var hostMetric = new HostMetric(
                         name: ConfigDataHelper.HostConfig.Name,
-                        tag: ConfigDataHelper.HostConfig.Tag,
+                        identifier: ConfigDataHelper.HostConfig.Identifier,
                         ips: ConfigDataHelper.HostConfig.Ips,
                         cpuMetric: await hostMetricService.GetCpuUsageAsync().ConfigureAwait(false),
                         memoryMetric: hostMetricService.GetMemoryUsage(),
                         diskMetric: hostMetricService.GetDiskMetrics(),
                         networkMetric: hostMetricService.GetNetworkUsage());
                     //Console.WriteLine(JsonSerializer.Serialize(hostMetric));
-                    //await _dataPublisher.PublishAsync("host_metric", hostMetric, stoppingToken);
+                    await _dataPublisher.PublishAsync("host_metric", hostMetric, stoppingToken);
 
                     //-----Container Data
-                    var containers = await containerService.GetContainerListAsync(stoppingToken).ConfigureAwait(false);
+                    var containers = await containerService.GetContainerListAsync(stoppingToken).ConfigureAwait(false); 
                     //Console.WriteLine(JsonSerializer.Serialize(containers));
-                    //await _dataPublisher.PublishAsync("host_metric",
-                    //    containers, stoppingToken);
-
-                    //-----Db data
-                    //  await _dataPublisher.PublishAsync("db_metric",
-                    //      await databaseService.GetDatabaseListAsync(stoppingToken), stoppingToken);
-
+                    if (containers != null && containers.Length != 0)
+                    {
+                        await _dataPublisher.PublishAsync("container_metric",
+                            containers, stoppingToken);
+                    }
                     
-                    //todo may be add tag to the db model.
-                    var dbData = await databaseService.GetDatabaseListAsync(stoppingToken);
-                    //Console.WriteLine(JsonSerializer.Serialize(dbData));
-                    //;
-
+                    //-----Db data
+                    var dbs = await databaseService.GetDatabaseListAsync(stoppingToken);
+                    if (dbs.Databases.Count != 0)
+                    {
+                        Console.WriteLine(JsonSerializer.Serialize(dbs));
+                        await _dataPublisher.PublishAsync("db_metric",
+                            dbs, stoppingToken);
+                    }
+                    
                     if (!stoppingToken.IsCancellationRequested)
                     {
                         await _timeToDelayJob.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false);
@@ -81,7 +84,7 @@ public class PeriodicDataProcessor(
                 catch (Exception ex)
                 {
                     Log.Error(ex, "Error processing data: {ErrorMessage}", ex.Message);
-                    await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken).ConfigureAwait(false);
+                    return;
                 }
             }
         }, stoppingToken);

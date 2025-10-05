@@ -10,8 +10,6 @@ using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-ConfigDataHelper.LoadConfiguration(builder.Configuration);
-
 Console.WriteLine(@"
 **********************************************************************************************
 *   _____                            _     _                       _                    _    *
@@ -22,15 +20,9 @@ Console.WriteLine(@"
 *       |___/                                                          |___/                 *
 **********************************************************************************************");
 
-builder.Services.AddHostedService<PeriodicDataProcessor>();
-builder.Services.AddHostedService<AppCommandConsumer>();
+#region Logger configuration region
 
-builder.Services.AddSingleton<IHostMetricService, HostMetricService>();
-builder.Services.AddSingleton<IContainerService, ContainerService>();
-builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
-
-#region Logger configuration
-
+builder.Logging.ClearProviders();
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     //.WriteTo.File("zagent-logs.txt", rollingInterval: RollingInterval.Day)
@@ -38,6 +30,15 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 #endregion
+
+ConfigDataHelper.LoadConfiguration(builder.Configuration);
+
+builder.Services.AddHostedService<PeriodicDataProcessor>();
+//builder.Services.AddHostedService<AppCommandConsumer>();
+
+builder.Services.AddSingleton<IHostMetricService, HostMetricService>();
+builder.Services.AddSingleton<IContainerService, ContainerService>();
+builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
 
 var host = builder.Build();
 host.Run();

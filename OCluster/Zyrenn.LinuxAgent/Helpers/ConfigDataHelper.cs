@@ -13,6 +13,12 @@ public static class ConfigDataHelper
     #region Fields region
 
     public static string CommunicationKey { get; set; }
+
+    /// <summary>
+    /// This property defines the frequency of collecting data, the value will be used in a seconds format.
+    /// </summary>
+    public static ushort ScrapeInterval { get; set; }
+
     public static HostConfig HostConfig { get; set; }
     public static List<DatabaseConfig>? DbConfigs { get; set; }
 
@@ -20,39 +26,41 @@ public static class ConfigDataHelper
 
     #region Public methods region
 
-    /*public static void LoadConfiguration(IConfiguration configuration)
-    {
-        CommunicationKey = configuration.GetSection("CommunicationKey").Value ?? "unknown";
-        HostConfig = new HostConfig()
-        {
-            Name = configuration.GetSection("Name").Value ?? "unknown",
-            Tag = configuration.GetSection("Tag").Value ?? "unknown",
-            Ips = configuration.GetSection("Ips").Get<string[]>() ?? []
-        };
-
-        DbConfigs = configuration.GetSection("DatabaseConnections").Get<List<DatabaseConfig>>();
-    }*/
-
     public static void LoadConfiguration(IConfiguration configuration)
     {
-        var hostName = configuration.GetSection("Name").Value;
-        var hostTag = configuration.GetSection("Tag").Value;
-        var communicationKey = configuration.GetSection("CommunicationKey").Value;
-
-        ArgumentException.ThrowIfNullOrEmpty(communicationKey,
-            paramName: "Communication key is required and cannot be empty.");
-        ArgumentException.ThrowIfNullOrEmpty(hostTag,
-            paramName: "Host tag is required and cannot be empty."); //todo consider may be if the tag is empty, we can use the host name instead.
-
-        CommunicationKey = communicationKey;
-        HostConfig = new HostConfig()
+        try
         {
-            Name = hostName,
-            Tag = hostTag,
-            Ips = configuration.GetSection("Ips").Get<string[]>() ?? []
-        };
+            Log.Information("Loading and setting the configuration.");
+            var hostName = configuration["Name"];
+            var hostIdentifier = configuration["Identifier"];
+            var communicationKey = configuration["CommunicationKey"];
 
-        DbConfigs = configuration.GetSection("DatabaseConnections").Get<List<DatabaseConfig>>();
+            ArgumentException.ThrowIfNullOrEmpty(communicationKey, nameof(communicationKey));
+            ArgumentException.ThrowIfNullOrEmpty(hostIdentifier, nameof(hostIdentifier));
+
+
+            if (!ushort.TryParse(configuration["ScrapeInterval"], out var scrapeInterval))
+            {
+                Log.Warning("ScrapeInterval is missing or invalid. Defaulting to 10 seconds.");
+                scrapeInterval = 10;
+            }
+
+            ScrapeInterval = scrapeInterval;
+            CommunicationKey = communicationKey;
+            HostConfig = new HostConfig();
+            HostConfig.Name = hostName;
+            HostConfig.Identifier = hostIdentifier;
+            HostConfig.Ips = configuration.GetSection("Ips").Get<string[]>() ?? Array.Empty<string>();
+            DbConfigs = configuration.GetSection("DatabaseConnections").Get<List<DatabaseConfig>>() ?? [];
+
+            Log.Information("Configuration loaded successfully for host: {HostName} Tag: [{HostTag}]",
+                hostName, hostIdentifier);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to load configuration");
+            throw;
+        }
     }
 
     #endregion

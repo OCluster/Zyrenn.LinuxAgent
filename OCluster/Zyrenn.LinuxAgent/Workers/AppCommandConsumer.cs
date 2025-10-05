@@ -26,7 +26,7 @@ public sealed class AppCommandConsumer : BackgroundService, IAsyncDisposable
         return Task.Run(() =>
         {
             var opts = ConnectionFactory.GetDefaultOptions();
-            opts.Url = "nats://nats-broker.zyrenn.com:4222";
+            opts.Url = "nats://nats-broker.zyrenn.com";
 
             _connection = new ConnectionFactory().CreateConnection(opts);
             IJetStream jetStream = _connection.CreateJetStreamContext();
@@ -82,11 +82,11 @@ public sealed class AppCommandConsumer : BackgroundService, IAsyncDisposable
 
             Log.Debug($"[{DateTime.UtcNow:HH:mm:ss} (UTC)] Received command - Tag: {commandMessage}"); //todo enable debug only in DEV mode
 
-            if (tag == ConfigDataHelper.HostConfig.Tag &&
+            if (tag == ConfigDataHelper.HostConfig.Identifier &&
                 communicationKey == ConfigDataHelper.CommunicationKey)
             {
                 Log.Debug($"Executing command message for host_tag = {tag}");
-                await ExecuteBackupCommandAsync(commandMessage);
+                await ExecuteCommandAsync(commandMessage);
                  //todo do not forget to update the state of backup (status )
             }
 
@@ -99,7 +99,7 @@ public sealed class AppCommandConsumer : BackgroundService, IAsyncDisposable
         }
     }
 
-    private async Task ExecuteBackupCommandAsync(string command)
+    private async Task ExecuteCommandAsync(string command)
     {
         ShellCommandExecutor.ExecuteShellCommand(command);
         Console.WriteLine($"Executing backup for tag: {command}");

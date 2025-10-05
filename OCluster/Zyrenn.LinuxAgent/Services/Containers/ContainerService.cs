@@ -36,6 +36,8 @@ public class ContainerService(IConfiguration configuration) : IContainerService
                 await client.Containers.ListContainersAsync(new ContainersListParameters { All = true },
                     cancellationToken);
 
+            if (!containers.Any()) return null;
+            
             var tasks = containers.Select(async container =>
             {
                 await _containerSemaphore.WaitAsync(cancellationToken);
@@ -102,10 +104,9 @@ public class ContainerService(IConfiguration configuration) : IContainerService
                         (
                             detail: containerDetail,
                             cpuUsage: cpuMetric,
-                            memoryUsage: default,
+                            memoryUsage: default, //todo why is memory usage not filled look at this.
                             diskUsage: diskMetric,
-                            networkUsage: networkMetric,
-                            ConfigDataHelper.HostConfig.Tag
+                            networkUsage: networkMetric
                         ));
                     }
                     finally
