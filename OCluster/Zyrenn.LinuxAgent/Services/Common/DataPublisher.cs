@@ -34,7 +34,7 @@ public sealed class DataPublisher : IAsyncDisposable
     /// This field will be used as a message header in every msg being published with NATS.
     /// Any change to config will require either manual or auto reload, to reflect changes is a msg header values.
     /// </summary>
-    private MsgHeader _baseMsgHeader = new MsgHeader()
+    private readonly MsgHeader _baseMsgHeader = new MsgHeader()
     {
         {
             "communication_key", ConfigDataHelper.CommunicationKey

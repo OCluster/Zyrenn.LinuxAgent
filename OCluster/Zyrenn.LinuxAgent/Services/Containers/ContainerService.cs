@@ -17,7 +17,7 @@ public class ContainerService(IConfiguration configuration) : IContainerService
     #region Private fields region
 
     private readonly IConfiguration _configuration = configuration;
-    
+
     //todo may be the count of threads will be retrieved form the configuration
     private readonly SemaphoreSlim _containerSemaphore = new(5, 5);
     private readonly SemaphoreSlim _shellCommandSemaphore = new(5, 5);
@@ -37,7 +37,7 @@ public class ContainerService(IConfiguration configuration) : IContainerService
                     cancellationToken);
 
             if (!containers.Any()) return null;
-            
+
             var tasks = containers.Select(async container =>
             {
                 await _containerSemaphore.WaitAsync(cancellationToken);
@@ -69,8 +69,8 @@ public class ContainerService(IConfiguration configuration) : IContainerService
                                 status: inspectResponse.State.Status,
                                 error: inspectResponse.State.Error,
                                 exitCode: inspectResponse.State.ExitCode,
-                                startedAt: DateTime.Parse(inspectResponse.State.StartedAt),
-                                finishedAt: DateTime.Parse(inspectResponse.State.FinishedAt),
+                                startedAt: DateTime.Parse(inspectResponse.State.StartedAt).ToUniversalTime(),
+                                finishedAt: DateTime.Parse(inspectResponse.State.FinishedAt).ToUniversalTime(),
                                 health: inspectResponse.State.Health == null
                                     ? null
                                     : new ContainerHealth
@@ -97,6 +97,7 @@ public class ContainerService(IConfiguration configuration) : IContainerService
                         );
 
                         var cpuMetric = new CpuMetric((float)parsedStats.CpuPercent, 0, 0, 0);
+                        var memoryMetric = new MemoryMetric(parsedStats.Memory.Limit, 0, 0, parsedStats.Memory.Usage);
                         var diskMetric = new DiskMetric(0, parsedStats.BlockIo.Read, parsedStats.BlockIo.Write);
                         var networkMetric = new NetworkMetric(parsedStats.Network.Rx, parsedStats.Network.Tx);
 
@@ -104,7 +105,7 @@ public class ContainerService(IConfiguration configuration) : IContainerService
                         (
                             detail: containerDetail,
                             cpuUsage: cpuMetric,
-                            memoryUsage: default, //todo why is memory usage not filled look at this.
+                            memoryUsage: memoryMetric,
                             diskUsage: diskMetric,
                             networkUsage: networkMetric
                         ));
@@ -141,7 +142,7 @@ public class ContainerService(IConfiguration configuration) : IContainerService
     #region Private methods region
 
     private static Task<ContainerStatistic> ParseDockerStats(string rawOutput)
-    {   
+    {
         //The header line should be skipped
         var lines = rawOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         if (lines.Length < 2) throw new FormatException("No stats data found");
