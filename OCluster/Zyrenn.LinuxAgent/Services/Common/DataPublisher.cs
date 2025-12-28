@@ -34,7 +34,7 @@ public sealed class DataPublisher : IAsyncDisposable
 
     #region Constructors region
 
-    public DataPublisher(string url = "nats://nats-broker.zyrenn.com:4222")
+    public DataPublisher(string url = "")
     {
         var opts = ConnectionFactory.GetDefaultOptions();
         opts.Url = url;

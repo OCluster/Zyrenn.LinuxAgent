@@ -4,8 +4,14 @@ namespace Zyrenn.LinuxAgent.Helpers;
 
 public static class ShellCommandExecutor
 {
+    #region Fields region
+
     // Cache the shell path to avoid repeated file checks
     private static readonly string? s_shellPath = InitializeShellPath();
+
+    #endregion
+
+    #region Methods region
 
     private static string? InitializeShellPath() =>
         File.Exists("/bin/bash") ? "/bin/bash" :
@@ -47,4 +53,6 @@ public static class ShellCommandExecutor
         process.WaitForExit();
         return output.ToString();
     }
+
+    #endregion
 }
