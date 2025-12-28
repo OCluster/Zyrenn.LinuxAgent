@@ -1,12 +1,9 @@
 using Serilog;
-using Zyrenn.LinuxAgent;
 using Zyrenn.LinuxAgent.Helpers;
-using Zyrenn.LinuxAgent.Services.Common;
 using Zyrenn.LinuxAgent.Services.Containers;
 using Zyrenn.LinuxAgent.Services.Databases;
 using Zyrenn.LinuxAgent.Services.Hosts;
 using Zyrenn.LinuxAgent.Workers;
-using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 var builder = Host.CreateApplicationBuilder(args);
 
